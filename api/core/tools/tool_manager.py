@@ -392,6 +392,28 @@ class ToolManager:
             raise ValueError("runtime not found or runtime parameters not found")
 
         tool_entity.runtime.runtime_parameters.update(runtime_parameters)
+
+        # 🆕 新增：为插件工具创建包含工作流变量的 PluginTool 实例
+        if agent_tool.provider_type == ToolProviderType.PLUGIN:
+            tool_instance = PluginTool(
+                entity=agent_tool,
+                runtime=tool_entity,
+                tenant_id=tenant_id,
+                icon=tool_entity.icon,
+                plugin_unique_identifier=tool_entity.plugin_unique_identifier
+            )
+
+            # 🆕 获取包含工作流变量的运行时参数
+            workflow_variables = tool_instance.get_runtime_parameters(
+                conversation_id=None,
+                app_id=app_id,
+                message_id=None,
+                variable_pool=variable_pool
+            )
+
+            # 🆕 更新运行时参数，包含工作流变量
+            tool_entity.runtime.runtime_parameters = workflow_variables
+
         return tool_entity
 
     @classmethod
@@ -435,6 +457,28 @@ class ToolManager:
             runtime_parameters = encryption_manager.decrypt_tool_parameters(runtime_parameters)
 
         tool_runtime.runtime.runtime_parameters.update(runtime_parameters)
+
+        # 🆕 新增：为插件工具创建包含工作流变量的 PluginTool 实例
+        if workflow_tool.provider_type == ToolProviderType.PLUGIN:
+            tool_instance = PluginTool(
+                entity=workflow_tool,
+                runtime=tool_runtime,
+                tenant_id=tenant_id,
+                icon=tool_runtime.icon,
+                plugin_unique_identifier=tool_runtime.plugin_unique_identifier
+            )
+
+            # 🆕 获取包含工作流变量的运行时参数
+            workflow_variables = tool_instance.get_runtime_parameters(
+                conversation_id=None,
+                app_id=app_id,
+                message_id=None,
+                variable_pool=variable_pool
+            )
+
+            # 🆕 更新运行时参数，包含工作流变量
+            tool_runtime.runtime.runtime_parameters = workflow_variables
+
         return tool_runtime
 
     @classmethod

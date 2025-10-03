@@ -196,11 +196,15 @@ class PluginToolManager(BasePluginClient):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        variable_pool: Any = None,  # 🆕 新增：工作流变量池参数
     ) -> list[ToolParameter]:
         """
         get the runtime parameters of the tool
         """
         tool_provider_id = GenericProviderID(provider)
+
+        # 🆕 新增：将工作流变量注入到凭证中，供插件获取
+        credentials = self._inject_workflow_variables_to_credentials(credentials, variable_pool)
 
         class RuntimeParametersResponse(BaseModel):
             parameters: list[ToolParameter]
@@ -217,7 +221,7 @@ class PluginToolManager(BasePluginClient):
                 "data": {
                     "provider": tool_provider_id.provider_name,
                     "tool": tool,
-                    "credentials": credentials,
+                    "credentials": credentials,  # 🆕 使用包含工作流变量的凭证
                 },
             },
             headers={
@@ -230,3 +234,52 @@ class PluginToolManager(BasePluginClient):
             return resp.parameters
 
         return []
+
+    def _inject_workflow_variables_to_credentials(self, credentials: dict, variable_pool) -> dict:
+        """
+        将工作流变量注入到凭证中，供插件获取
+
+        Args:
+            credentials: 原始凭证
+            variable_pool: 工作流变量池
+
+        Returns:
+            dict: 包含工作流变量的凭证
+        """
+        credentials = credentials.copy()
+
+        if variable_pool:
+            workflow_variables = {
+                'user_inputs': self._serialize_user_inputs(variable_pool),
+                'system_variables': self._serialize_system_variables(variable_pool),
+                'environment_variables': self._serialize_environment_variables(variable_pool)
+            }
+            credentials['__workflow_variables__'] = workflow_variables
+
+        return credentials
+
+    def _serialize_user_inputs(self, variable_pool) -> dict:
+        """序列化用户输入变量"""
+        if hasattr(variable_pool, 'user_inputs') and variable_pool.user_inputs:
+            return variable_pool.user_inputs
+        return {}
+
+    def _serialize_system_variables(self, variable_pool) -> dict:
+        """序列化系统变量"""
+        if not variable_pool or not variable_pool.system_variables:
+            return {}
+
+        # 系统变量是SystemVariable对象，需要转换为字典
+        return variable_pool.system_variables.to_dict()
+
+    def _serialize_environment_variables(self, variable_pool) -> dict:
+        """序列化环境变量"""
+        if not variable_pool or not variable_pool.environment_variables:
+            return {}
+
+        # 环境变量是Variable对象列表，需要转换为字典
+        env_vars = {}
+        for var in variable_pool.environment_variables:
+            env_vars[var.name] = var.get_value()
+
+        return env_vars

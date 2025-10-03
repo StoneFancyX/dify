@@ -60,6 +60,7 @@ class PluginTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        variable_pool: Any = None,  # 🆕 新增：工作流变量池参数
     ) -> list[ToolParameter]:
         """
         get the runtime parameters
@@ -80,6 +81,7 @@ class PluginTool(Tool):
             conversation_id=conversation_id,
             app_id=app_id,
             message_id=message_id,
+            variable_pool=variable_pool,  # 🆕 传递工作流变量池
         )
 
         return self.runtime_parameters
